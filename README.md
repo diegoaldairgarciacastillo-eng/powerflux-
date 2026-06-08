@@ -42,10 +42,23 @@ Proyecto en desarrollo activo.
 
 ## Capturas de pantalla
 
-<p align="center">
-  <img src="screenshots/icon.jpg" width="180">
-  <img src="screenshots/library.jpg" width="180">
-  <img src="screenshots/search.jpg" width="180">
-  <img src="screenshots/player.jpg" width="180">
-</p>
-
+<table>
+  <tr>
+    <td align="center"><b>Icon</b></td>
+    <td align="center"><b>Library</b></td>
+    <td align="center"><b>Search</b></td>
+    <td align="center"><b>Player</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/icon.jpg" width="200"></td>
+    <td><img src="screenshots/library.jpg" width="200"></td>
+    <td><img src="screenshots/search.jpg" width="200"></td>
+    <td><img src="screenshots/player.jpg" width="200"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Equalizer</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/equalizer.jpg" width="200"></td>
+  </tr>
+</table>
