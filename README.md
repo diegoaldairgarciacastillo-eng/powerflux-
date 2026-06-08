@@ -40,3 +40,11 @@ Proyecto en desarrollo activo.
 * Diseño de interfaz y navegación
 * Estructura base del reproductor
 
+## Capturas de pantalla
+
+<p align="center">
+  <img src="screenshots/icon.jpg" width="180">
+  <img src="screenshots/library.jpg" width="180">
+  <img src="screenshots/search.jpg" width="180">
+</p>
+
