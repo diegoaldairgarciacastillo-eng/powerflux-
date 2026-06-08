@@ -55,10 +55,4 @@ Proyecto en desarrollo activo.
     <td><img src="screenshots/search.jpg" width="200"></td>
     <td><img src="screenshots/player.jpg" width="200"></td>
   </tr>
-  <tr>
-    <td align="center"><b>Equalizer</b></td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/equalizer.jpg" width="200"></td>
-  </tr>
 </table>
