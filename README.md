@@ -1,17 +1,30 @@
-# powerfluxapp
+# PowerFlux
 
-A new Flutter project.
+PowerFlux es un reproductor de música moderno desarrollado con Flutter. El proyecto se centra en ofrecer una experiencia de música local rápida, elegante y con muchas funciones, inspirada en reproductores de audio profesionales.
 
-## Getting Started
+## Características
 
-This project is a starting point for a Flutter application.
+* Interfaz de usuario moderna y adaptable
+* Gestión de la biblioteca musical local
+* Artistas, álbumes, géneros, compositores y listas de reproducción
+* Secciones de reproducción reciente y adición reciente
+* Gestión de favoritos
+* Gestión de cola de reproducción
+* Controles de ecualizador
+* Función de búsqueda
+* Arquitectura Flutter multiplataforma
 
-A few resources to get you started if this is your first Flutter project:
+## Versión
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Versión actual: v1.1
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Tecnologías
+
+* Flutter
+* Dart
+* Gestión del estado del proveedor
+* API de audio de Android
+
+## Estado
+
+Este proyecto se encuentra en desarrollo activo y se añaden y mejoran continuamente nuevas funciones.
