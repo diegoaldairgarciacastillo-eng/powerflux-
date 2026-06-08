@@ -8,69 +8,32 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: ListView(
+        child: Column(
           children: [
-            // Logo PowerFlux
+            const SizedBox(height: 40),
+            // Poweramp logo style
+            const Text('POWERFLUX',
+                style: TextStyle(color: Colors.white, fontSize: 28,
+                    fontWeight: FontWeight.w900, letterSpacing: 4)),
+            const Text('Tu reproductor de música',
+                style: TextStyle(color: Color(0xFF555555), fontSize: 13)),
+            const SizedBox(height: 32),
+            _SettingsTile(icon: Icons.settings_rounded, label: 'Ajustes', onTap: () {}),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              alignment: Alignment.center,
-              child: Column(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A1A),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(Icons.graphic_eq,
-                        color: Colors.white, size: 40),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'POWERFLUX',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'v1.0.0',
-                    style:
-                        TextStyle(color: Color(0xFF666666), fontSize: 13),
-                  ),
-                ],
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1C),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF2A2A2A)),
               ),
+              child: const Text('Biblioteca',
+                  style: TextStyle(color: Colors.white, fontSize: 15)),
             ),
-            const Divider(color: Color(0xFF222222), height: 1),
-            _SettingsTile(
-              icon: Icons.settings,
-              label: 'Ajustes',
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.library_music,
-              label: 'Biblioteca',
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.history,
-              label: 'Historial de cambios',
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.help_outline,
-              label: 'Ayuda',
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.info_outline,
-              label: 'Acerca de',
-              onTap: () {},
-            ),
+            const SizedBox(height: 8),
+            _SettingsTile(icon: Icons.show_chart_rounded, label: 'Historial de cambios', onTap: () {}),
+            _SettingsTile(icon: Icons.help_outline_rounded, label: 'Ayuda', onTap: () {}),
           ],
         ),
       ),
@@ -79,26 +42,18 @@ class SettingsScreen extends StatelessWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SettingsTile(
-      {required this.icon, required this.label, required this.onTap});
-
+  final IconData icon; final String label; final VoidCallback onTap;
+  const _SettingsTile({required this.icon, required this.label, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      leading: Icon(icon, color: const Color(0xFFAAAAAA), size: 24),
-      title: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-      ),
-      trailing: const Icon(Icons.chevron_right,
-          color: Color(0xFF444444), size: 20),
-      onTap: onTap,
-    );
-  }
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(children: [
+        Icon(icon, color: Colors.white, size: 22),
+        const SizedBox(width: 16),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 15)),
+      ]),
+    ),
+  );
 }

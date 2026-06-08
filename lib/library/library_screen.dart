@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/player_provider.dart';
 import 'shared/library_options_menu.dart';
 import 'all_songs_screen.dart';
 import 'folders_screen.dart';
@@ -25,55 +27,101 @@ class LibraryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = _libraryItems(context);
+    final p = context.watch<PlayerProvider>();
+
+    final items = [
+      _Item(Icons.music_note_rounded,        'Todas las canciones',       const Color(0xFF5B5BD6), const AllSongsScreen()),
+      _Item(Icons.folder_rounded,            'Carpetas',                  const Color(0xFF3B82F6), const FoldersScreen()),
+      _Item(Icons.folder_copy_rounded,       'Estructura de carpetas',    const Color(0xFF2563EB), const FolderTreeScreen()),
+      _Item(Icons.album_rounded,             'Álbumes',                   const Color(0xFF7C3AED), const AlbumsScreen()),
+      _Item(Icons.mic_rounded,               'Artistas',                  const Color(0xFF6D28D9), const ArtistsScreen()),
+      _Item(Icons.record_voice_over_rounded, 'Artistas del álbum',        const Color(0xFF7C3AED), const AlbumArtistsScreen()),
+      _Item(Icons.library_music_rounded,     'Géneros',                   const Color(0xFF9333EA), const GenresScreen()),
+      _Item(Icons.calendar_month_rounded,    'Años',                      const Color(0xFF0891B2), const YearsScreen()),
+      _Item(Icons.person_rounded,            'Compositores',              const Color(0xFF059669), const ComposersScreen()),
+      _Item(Icons.queue_music_rounded,       'Listas de reproducción',    const Color(0xFF92400E), const PlaylistsScreen()),
+      _Item(Icons.wifi_tethering_rounded,    'Transmisiones',             const Color(0xFF047857), const StreamsScreen()),
+      _Item(Icons.fast_forward_rounded,      'Cola',                      const Color(0xFFB45309), const QueueScreen()),
+      _Item(Icons.bookmark_rounded,          'Favoritos',                 const Color(0xFF1D4ED8), const FavoritesScreen()),
+      _Item(Icons.play_circle_rounded,       'Lo más reproducido',        const Color(0xFF7C3AED), const MostPlayedScreen()),
+      _Item(Icons.thumb_up_rounded,          'Mejor puntuado',            const Color(0xFF6B7280), const TopRatedScreen()),
+      _Item(Icons.thumb_down_rounded,        'Peor puntuado',             const Color(0xFF4B5563), const WorstRatedScreen()),
+      _Item(Icons.history_rounded,           'Reproducido recientemente', const Color(0xFF7C3AED), const RecentlyPlayedScreen()),
+      _Item(Icons.fiber_new_rounded,         'Agregado recientemente',    const Color(0xFF16A34A), const RecentlyAddedScreen()),
+      _Item(Icons.more_time_rounded,         'Pistas largas',             const Color(0xFF6D28D9), const LongTracksScreen()),
+    ];
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 4),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Biblioteca',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Spacer(),
+                  const Text('Biblioteca',
+                      style: TextStyle(color: Colors.white, fontSize: 28,
+                          fontWeight: FontWeight.w800)),
                   GestureDetector(
-                    onTap: () => LibraryOptionsMenu.show(
-                      context,
-                      title: 'Biblioteca',
-                      icon: Icons.library_music,
-                    ),
+                    onTap: () => LibraryOptionsMenu.show(context,
+                        title: 'Biblioteca',
+                        icon: Icons.library_music_rounded,
+                        iconBgColor: const Color(0xFF5B5BD6),
+                        onSelectFolders: () => p.selectFolder()),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 40, height: 40,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF444444)),
-                      ),
-                      child: const Icon(
-                        Icons.more_vert,
-                        color: Color(0xFFAAAAAA),
-                        size: 18,
-                      ),
+                        border: Border.all(color: const Color(0xFF2A2A2A))),
+                      child: const Icon(Icons.more_vert_rounded,
+                          color: Colors.white, size: 22),
                     ),
                   ),
                 ],
               ),
             ),
-            // Lista de categorías
+            // Song count
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text('${p.songs.length} canciones · ${p.musicFolder.split('/').last}',
+                  style: const TextStyle(color: Color(0xFF555555), fontSize: 12)),
+            ),
+            // Loading indicator
+            if (p.songs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text('Toca ⋮ → Seleccionar carpetas para cargar tu música',
+                    style: TextStyle(color: Color(0xFF555555), fontSize: 13)),
+              ),
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 8),
                 itemCount: items.length,
-                itemBuilder: (_, i) => _LibraryTile(item: items[i]),
+                itemBuilder: (context, i) {
+                  final item = items[i];
+                  return InkWell(
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => item.screen)),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(children: [
+                        Container(
+                          width: 46, height: 46,
+                          decoration: BoxDecoration(
+                              color: item.color, shape: BoxShape.circle),
+                          child: Icon(item.icon, color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(item.label, style: const TextStyle(
+                            color: Colors.white, fontSize: 16,
+                            fontWeight: FontWeight.w500)),
+                      ]),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -81,181 +129,9 @@ class LibraryScreen extends StatelessWidget {
       ),
     );
   }
-
-  List<_LibraryItem> _libraryItems(BuildContext context) => [
-    _LibraryItem(
-      color: const Color(0xFF5B6EAE),
-      icon: Icons.music_note,
-      label: 'Todas las canciones',
-      onTap: () => _push(context, const AllSongsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF3A7BD5),
-      icon: Icons.folder,
-      label: 'Carpetas',
-      onTap: () => _push(context, const FoldersScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF3A7BD5),
-      icon: Icons.account_tree,
-      label: 'Estructura de carpetas',
-      onTap: () => _push(context, const FolderTreeScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF6A5ACD),
-      icon: Icons.album,
-      label: 'Álbumes',
-      onTap: () => _push(context, const AlbumsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF7B4FAE),
-      icon: Icons.mic,
-      label: 'Artistas',
-      onTap: () => _push(context, const ArtistsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF8B4FAE),
-      icon: Icons.person,
-      label: 'Artistas del álbum',
-      onTap: () => _push(context, const AlbumArtistsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF9B3FAE),
-      icon: Icons.music_note_outlined,
-      label: 'Géneros',
-      onTap: () => _push(context, const GenresScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF2AA8B0),
-      icon: Icons.calendar_today,
-      label: 'Años',
-      onTap: () => _push(context, const YearsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF2D8A5E),
-      icon: Icons.person_outline,
-      label: 'Compositores',
-      onTap: () => _push(context, const ComposersScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF8B4A3A),
-      icon: Icons.queue_music,
-      label: 'Listas de reproducción',
-      onTap: () => _push(context, const PlaylistsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF2D7A5E),
-      icon: Icons.radio,
-      label: 'Transmisiones',
-      onTap: () => _push(context, const StreamsScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF8B7A2A),
-      icon: Icons.fast_forward,
-      label: 'Cola',
-      badge: '1/1',
-      onTap: () => _push(context, const QueueScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF2A5BD5),
-      icon: Icons.bookmark,
-      label: 'Favoritos',
-      onTap: () => _push(context, const FavoritesScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF8B3FAE),
-      icon: Icons.play_circle,
-      label: 'Lo más reproducido',
-      onTap: () => _push(context, const MostPlayedScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF6A6A6A),
-      icon: Icons.thumb_up,
-      label: 'Mejor puntuado',
-      onTap: () => _push(context, const TopRatedScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF4A4A4A),
-      icon: Icons.thumb_down,
-      label: 'Peor puntuado',
-      onTap: () => _push(context, const WorstRatedScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF5B4ACD),
-      icon: Icons.play_circle_outline,
-      label: 'Reproducido recientemente',
-      onTap: () => _push(context, const RecentlyPlayedScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF2A7A3A),
-      icon: Icons.add_circle_outline,
-      label: 'Agregado recientemente',
-      onTap: () => _push(context, const RecentlyAddedScreen()),
-    ),
-    _LibraryItem(
-      color: const Color(0xFF6A3ACD),
-      icon: Icons.more_horiz,
-      label: 'Pistas largas',
-      onTap: () => _push(context, const LongTracksScreen()),
-    ),
-  ];
-
-  void _push(BuildContext context, Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
-  }
 }
 
-class _LibraryItem {
-  final Color color;
-  final IconData icon;
-  final String label;
-  final String? badge;
-  final VoidCallback onTap;
-
-  _LibraryItem({
-    required this.color,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.badge,
-  });
-}
-
-class _LibraryTile extends StatelessWidget {
-  final _LibraryItem item;
-
-  const _LibraryTile({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(color: item.color, shape: BoxShape.circle),
-        child: Icon(item.icon, color: Colors.white, size: 22),
-      ),
-      title: Row(
-        children: [
-          Text(
-            item.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (item.badge != null) ...[
-            const SizedBox(width: 8),
-            Text(
-              item.badge!,
-              style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
-            ),
-          ],
-        ],
-      ),
-      onTap: item.onTap,
-    );
-  }
+class _Item {
+  final IconData icon; final String label; final Color color; final Widget screen;
+  const _Item(this.icon, this.label, this.color, this.screen);
 }

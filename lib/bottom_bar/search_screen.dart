@@ -1,192 +1,165 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/player_provider.dart';
+import '../library/shared/song_list_item.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialFilter;
+  const SearchScreen({super.key, this.initialFilter});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final _controller = TextEditingController();
-  int _selectedChip = 0;
-  bool _isSearching = false;
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  List<String> _history = ['toda', 'toe2', 'el fue', 'eñ', 'fogo'];
+  String _query = '';
+  String _activeCategory = 'Todo';
 
-  final List<String> _chips = [
-    'Todo',
-    'Álbumes',
-    'Artistas',
-    'Géneros',
-    'Compositores',
-    'Listas',
-  ];
+  static const _categories = ['Todo', 'Álbumes', 'Artistas', 'Artistas del álbum',
+    'Carpetas', 'Géneros', 'Compositores', 'Años'];
 
-  final List<String> _history = [
-    'Hillsong',
-    'The Walters',
-    'I Love You So',
-    'Unidos',
-  ];
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.watch<PlayerProvider>();
+    final results = _query.isNotEmpty
+        ? p.songs.where((s) =>
+            s.title.toLowerCase().contains(_query.toLowerCase()) ||
+            s.artist.toLowerCase().contains(_query.toLowerCase())).toList()
+        : <dynamic>[];
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Barra de búsqueda
+            // Search bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1C),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 14),
-                          const Icon(
-                            Icons.search,
-                            color: Color(0xFF666666),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              autofocus: false,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'Buscar canciones...',
-                                hintStyle: TextStyle(color: Color(0xFF555555)),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              onChanged: (v) =>
-                                  setState(() => _isSearching = v.isNotEmpty),
-                            ),
-                          ),
-                          if (_isSearching)
-                            GestureDetector(
-                              onTap: () {
-                                _controller.clear();
-                                setState(() => _isSearching = false);
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.only(right: 12),
-                                child: Icon(
-                                  Icons.close,
-                                  color: Color(0xFF666666),
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Chips de categorías
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _chips.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final active = _selectedChip == i;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedChip = i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: active ? Colors.white : const Color(0xFF1C1C1C),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Text(
-                        _chips[i],
-                        style: TextStyle(
-                          color: active
-                              ? Colors.black
-                              : const Color(0xFFAAAAAA),
-                          fontSize: 13,
-                          fontWeight: active
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1C),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    const Icon(Icons.search_rounded, color: Color(0xFF888888), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _ctrl,
+                        focusNode: _focus,
+                        autofocus: false,
+                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                        decoration: const InputDecoration(
+                          hintText: '',
+                          border: InputBorder.none,
+                          isDense: true,
                         ),
+                        onChanged: (v) => setState(() => _query = v),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Historial o resultados
-            if (!_isSearching) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Búsquedas recientes',
-                  style: TextStyle(
-                    color: Color(0xFF666666),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                    if (_ctrl.text.isNotEmpty)
+                      GestureDetector(
+                        onTap: () { _ctrl.clear(); setState(() => _query = ''); },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Icon(Icons.close_rounded, color: Color(0xFF888888), size: 18)),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
+            ),
+
+            // Category chips
+            if (_query.isNotEmpty) ...[
+              SizedBox(
+                height: 36,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _categories.length,
+                  itemBuilder: (_, i) {
+                    final sel = _activeCategory == _categories[i];
+                    return GestureDetector(
+                      onTap: () => setState(() => _activeCategory = _categories[i]),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: sel ? const Color(0xFF3A3A3A) : const Color(0xFF1C1C1C),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: sel ? Colors.white : const Color(0xFF2A2A2A)),
+                        ),
+                        child: Text(_categories[i],
+                            style: TextStyle(
+                                color: sel ? Colors.white : const Color(0xFF888888),
+                                fontSize: 12)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Action row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Row(children: [
+                  _ActionBtn(icon: Icons.shuffle_rounded, onTap: () {}),
+                  const SizedBox(width: 8),
+                  _ActionBtn(icon: Icons.play_arrow_rounded, onTap: () {}),
+                  const SizedBox(width: 8),
+                  _ActionBtn(label: 'Seleccionar', onTap: () {}),
+                  const Spacer(),
+                  _ActionBtn(icon: Icons.more_vert_rounded, onTap: () {}),
+                ]),
+              ),
+              // Results
               Expanded(
                 child: ListView.builder(
-                  itemCount: _history.length,
-                  itemBuilder: (_, i) => ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    leading: const Icon(
-                      Icons.history,
-                      color: Color(0xFF555555),
-                      size: 20,
-                    ),
-                    title: Text(
-                      _history[i],
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    trailing: GestureDetector(
-                      onTap: () => setState(() => _history.removeAt(i)),
-                      child: const Icon(
-                        Icons.close,
-                        color: Color(0xFF555555),
-                        size: 16,
-                      ),
-                    ),
+                  itemCount: results.length,
+                  itemBuilder: (_, i) => SongListItem(
+                    title: results[i].title,
+                    artist: results[i].artist,
+                    duration: results[i].duration,
+                    format: results[i].format,
                     onTap: () {
-                      _controller.text = _history[i];
-                      setState(() => _isSearching = true);
+                      final idx = p.songs.indexOf(results[i]);
+                      if (idx >= 0) p.playSong(idx);
                     },
                   ),
                 ),
               ),
             ] else ...[
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Sin resultados',
-                    style: TextStyle(color: Color(0xFF555555)),
-                  ),
+              // History
+              Expanded(
+                child: Column(
+                  children: [
+                    ..._history.map((h) => ListTile(
+                      dense: true,
+                      title: Text(h, style: const TextStyle(color: Colors.white, fontSize: 15)),
+                      trailing: GestureDetector(
+                        onTap: () => setState(() => _history.remove(h)),
+                        child: const Icon(Icons.close_rounded, color: Color(0xFF555555), size: 18)),
+                    )),
+                    if (_history.isNotEmpty)
+                      TextButton(
+                        onPressed: () => setState(() => _history.clear()),
+                        child: const Text('Limpiar historial de búsqueda',
+                            style: TextStyle(color: Color(0xFF555555), fontSize: 13)),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -195,4 +168,23 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
+}
+
+class _ActionBtn extends StatelessWidget {
+  final IconData? icon; final String? label; final VoidCallback onTap;
+  const _ActionBtn({this.icon, this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: label != null
+          ? const EdgeInsets.symmetric(horizontal: 14, vertical: 9)
+          : const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C), shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF2A2A2A))),
+      child: label != null
+          ? Text(label!, style: const TextStyle(color: Colors.white, fontSize: 13))
+          : Icon(icon!, color: Colors.white, size: 20)),
+  );
 }

@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'providers/player_provider.dart';
+import 'providers/eq_provider.dart';
 import 'bottom_bar/bottom_bar.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF000000),
-      systemNavigationBarIconBrightness: Brightness.light,
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF000000),
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PlayerProvider()),
+        ChangeNotifierProvider(create: (_) => EqProvider()),
+      ],
+      child: const PowerFluxApp(),
     ),
   );
-  runApp(const PowerFluxApp());
 }
 
 class PowerFluxApp extends StatelessWidget {
@@ -30,7 +39,7 @@ class PowerFluxApp extends StatelessWidget {
         fontFamily: 'Roboto',
         colorScheme: const ColorScheme.dark(
           surface: Color(0xFF000000),
-          primary: Color(0xFFFFFFFF),
+          primary: Colors.white,
         ),
       ),
       home: const BottomBarShell(),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/player_provider.dart';
 import '../library/library_screen.dart';
 import 'equalizer_screen.dart';
 import 'search_screen.dart';
@@ -7,15 +9,14 @@ import 'player_screen.dart';
 
 class BottomBarShell extends StatefulWidget {
   const BottomBarShell({super.key});
-
   @override
   State<BottomBarShell> createState() => _BottomBarShellState();
 }
 
 class _BottomBarShellState extends State<BottomBarShell> {
-  int _selectedIndex = 0;
+  int _index = 0;
 
-  final List<Widget> _screens = const [
+  static const _screens = [
     LibraryScreen(),
     EqualizerScreen(),
     SearchScreen(),
@@ -26,108 +27,97 @@ class _BottomBarShellState extends State<BottomBarShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Column(
+      body: _screens[_index],
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(child: _screens[_selectedIndex]),
-          _MiniPlayer(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PlayerScreen()),
-            ),
-          ),
-          _BottomNav(
-            selectedIndex: _selectedIndex,
-            onTap: (i) => setState(() => _selectedIndex = i),
-          ),
+          _MiniPlayer(onTap: () => Navigator.push(context,
+            MaterialPageRoute(fullscreenDialog: true, builder: (_) => const PlayerScreen()))),
+          _NavBar(index: _index, onTap: (i) => setState(() => _index = i)),
         ],
       ),
     );
   }
 }
 
-// ─── Mini Player ────────────────────────────────────────────────────────────
-
+// ── Mini Player ──────────────────────────────────────────────────────────────
 class _MiniPlayer extends StatelessWidget {
   final VoidCallback onTap;
   const _MiniPlayer({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final p = context.watch<PlayerProvider>();
+    final song = p.currentSong;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        color: const Color(0xFF111111),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1C1C1C),
+          border: Border(top: BorderSide(color: Color(0xFF2A2A2A), width: 0.5)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
               child: Row(
                 children: [
-                  // Portada
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
+                  // Album art
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      width: 48, height: 48,
                       color: const Color(0xFF2A2A2A),
+                      child: const Icon(Icons.music_note_rounded,
+                          color: Color(0xFF555555), size: 24),
                     ),
-                    child: const Icon(Icons.music_note,
-                        color: Color(0xFF666666), size: 22),
                   ),
                   const SizedBox(width: 10),
-                  // Título y artista
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '* (Introduccion)',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          song?.title ?? 'Sin reproducción',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white,
+                              fontSize: 13, fontWeight: FontWeight.w600),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Hillsong en Español/Hillsong UNITED - Unidos Per ...',
-                          style: TextStyle(
-                            color: Color(0xFF888888),
-                            fontSize: 12,
-                          ),
+                          song?.artist ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Color(0xFF888888), fontSize: 11),
                         ),
                       ],
                     ),
                   ),
-                  // Botón play
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.play_arrow,
-                        color: Colors.white, size: 28),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  GestureDetector(
+                    onTap: () => p.togglePlay(),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      width: 42, height: 42,
+                      decoration: const BoxDecoration(
+                          color: Color(0xFF2A2A2A), shape: BoxShape.circle),
+                      child: Icon(
+                        p.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        color: Colors.white, size: 24),
+                    ),
                   ),
                 ],
               ),
             ),
-            // Barra de progreso
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: 0.02,
-                  backgroundColor: const Color(0xFF333333),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Color(0xFF888888)),
-                  minHeight: 2.5,
-                ),
-              ),
+            // Progress bar
+            LinearProgressIndicator(
+              value: p.progress,
+              minHeight: 2,
+              backgroundColor: const Color(0xFF2A2A2A),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF888888)),
             ),
           ],
         ),
@@ -136,56 +126,42 @@ class _MiniPlayer extends StatelessWidget {
   }
 }
 
-// ─── Bottom Navigation Bar ──────────────────────────────────────────────────
-
-class _BottomNav extends StatelessWidget {
-  final int selectedIndex;
+// ── Nav Bar ──────────────────────────────────────────────────────────────────
+class _NavBar extends StatelessWidget {
+  final int index;
   final ValueChanged<int> onTap;
-
-  const _BottomNav({required this.selectedIndex, required this.onTap});
+  const _NavBar({required this.index, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      _NavItem(icon: Icons.grid_view, index: 0),
-      _NavItem(icon: Icons.bar_chart, index: 1),
-      _NavItem(icon: Icons.search, index: 2),
-      _NavItem(icon: Icons.menu, index: 3),
+    const items = [
+      Icons.grid_view_rounded,
+      Icons.equalizer_rounded,
+      Icons.search_rounded,
+      Icons.menu_rounded,
     ];
-
     return Container(
       color: Colors.black,
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: items
-                .map((item) => Expanded(
-                      child: GestureDetector(
-                        onTap: () => onTap(item.index),
-                        behavior: HitTestBehavior.opaque,
-                        child: Center(
-                          child: Icon(
-                            item.icon,
-                            color: selectedIndex == item.index
-                                ? Colors.white
-                                : const Color(0xFF666666),
-                            size: 26,
-                          ),
-                        ),
-                      ),
-                    ))
-                .toList(),
-          ),
+        child: Row(
+          children: List.generate(items.length, (i) {
+            final sel = index == i;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onTap(i),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Icon(items[i],
+                    size: 28,
+                    color: sel ? Colors.white : const Color(0xFF555555)),
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
   }
-}
-
-class _NavItem {
-  final IconData icon;
-  final int index;
-  _NavItem({required this.icon, required this.index});
 }

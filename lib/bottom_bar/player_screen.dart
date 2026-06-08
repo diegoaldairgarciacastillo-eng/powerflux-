@@ -1,133 +1,203 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/player_provider.dart';
 
-class PlayerScreen extends StatefulWidget {
+class PlayerScreen extends StatelessWidget {
   const PlayerScreen({super.key});
 
   @override
-  State<PlayerScreen> createState() => _PlayerScreenState();
-}
-
-class _PlayerScreenState extends State<PlayerScreen>
-    with TickerProviderStateMixin {
-  bool _isPlaying = false;
-  bool _isLiked = false;
-  bool _isDisliked = false;
-  double _progress = 0.02;
-  bool _isShuffle = false;
-  bool _isRepeat = false;
-
-  late AnimationController _waveController;
-
-  final List<double> _barHeights = [
-    0.3, 0.5, 0.7, 0.9, 1.0, 0.8, 0.6, 0.4, 0.5, 0.7,
-    0.9, 0.6, 0.4, 0.8, 1.0, 0.7, 0.5, 0.3, 0.6, 0.9,
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _waveController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _waveController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final p = context.watch<PlayerProvider>();
+    final song = p.currentSong;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A18),
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
           children: [
-            // Portada del álbum
-            _buildAlbumArt(),
-            // Título, artista, controles superiores
-            _buildSongInfo(),
-            // Botones de control secundarios
-            _buildSecondaryControls(),
-            const Spacer(),
-            // Botones principales + visualizador
-            _buildMainControls(),
-            // Tiempo
-            _buildTimeRow(),
-            // Info de output
+            // ── Waveform artwork area ────────────────────────────────────
+            Expanded(
+              flex: 4,
+              child: Stack(
+                children: [
+                  // Waveform background shape
+                  Positioned.fill(
+                    child: CustomPaint(painter: _WaveformPainter()),
+                  ),
+                  // Rating + menu row
+                  Positioned(
+                    bottom: 16, left: 16, right: 16,
+                    child: Row(
+                      children: [
+                        _RoundBtn(icon: Icons.thumb_up_outlined, onTap: () {}),
+                        const SizedBox(width: 8),
+                        _RoundBtn(icon: Icons.thumb_down_outlined, onTap: () {}),
+                        const Spacer(),
+                        _RoundBtn(
+                          icon: Icons.more_vert_rounded,
+                          onTap: () => _showSongMenu(context, p),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Song info ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1C),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      song?.title ?? 'Sin reproducción',
+                      style: const TextStyle(color: Colors.white,
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1C),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      song?.artist ?? '',
+                      style: const TextStyle(color: Colors.white,
+                          fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Secondary controls ───────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  _RoundBtn(icon: Icons.graphic_eq_rounded, onTap: () {}),
+                  const SizedBox(width: 8),
+                  _RoundBtn(icon: Icons.timer_outlined, onTap: () {}),
+                  const Spacer(),
+                  _RoundBtn(
+                    icon: Icons.repeat_rounded,
+                    onTap: p.toggleRepeat,
+                    active: p.isRepeat,
+                  ),
+                  const SizedBox(width: 8),
+                  _RoundBtn(
+                    icon: Icons.shuffle_rounded,
+                    onTap: p.toggleShuffle,
+                    active: p.isShuffle,
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Waveform seek + controls ─────────────────────────────────
+            Expanded(
+              flex: 3,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Waveform visualizer as seek bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: GestureDetector(
+                      onHorizontalDragUpdate: (d) {
+                        final box = context.findRenderObject() as RenderBox;
+                        final dx = d.localPosition.dx / box.size.width;
+                        p.seekTo(dx.clamp(0.0, 1.0));
+                      },
+                      child: CustomPaint(
+                        painter: _SeekWaveformPainter(progress: p.progress),
+                        size: Size(MediaQuery.of(context).size.width, 120),
+                      ),
+                    ),
+                  ),
+                  // Transport controls
+                  Positioned(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _TransportBtn(icon: Icons.fast_rewind_rounded, size: 32, onTap: () {}),
+                        const SizedBox(width: 8),
+                        _TransportBtn(icon: Icons.skip_previous_rounded, size: 40, onTap: p.previous),
+                        const SizedBox(width: 8),
+                        // Big play button
+                        GestureDetector(
+                          onTap: () => p.togglePlay(),
+                          child: Container(
+                            width: 72, height: 72,
+                            decoration: const BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle),
+                            child: Icon(
+                              p.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                              color: Colors.black, size: 40),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _TransportBtn(icon: Icons.skip_next_rounded, size: 40, onTap: p.next),
+                        const SizedBox(width: 8),
+                        _TransportBtn(icon: Icons.fast_forward_rounded, size: 32, onTap: () {}),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Time row ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _TimeChip(p.formatDuration(p.position)),
+                  _TimeChip(p.formatDuration(p.duration)),
+                ],
+              ),
+            ),
+
+            // ── Output info ──────────────────────────────────────────────
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text(
-                '🔊  OPENSL ES OUTPUT  24 BIT  48 KHZ',
-                style: TextStyle(
-                  color: Color(0xFF888888),
-                  fontSize: 11,
-                  letterSpacing: 0.5,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.headphones_rounded, color: Color(0xFF555555), size: 14),
+                  SizedBox(width: 4),
+                  Text('OPENSL ES OUTPUT  24 BIT  48 KHZ',
+                    style: TextStyle(color: Color(0xFF555555), fontSize: 10,
+                        letterSpacing: 1)),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildAlbumArt() {
-    return Expanded(
-      flex: 5,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Stack(
-          children: [
-            // Portada principal
+            // ── Bottom nav (same as shell) ───────────────────────────────
             Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: const Color(0xFFE8E4D0),
-              ),
-              child: const Center(
-                child: Icon(Icons.music_note,
-                    size: 80, color: Color(0xFF888880)),
-              ),
-            ),
-            // Botón like
-            Positioned(
-              left: 12,
-              bottom: 12,
-              child: _RoundButton(
-                onTap: () => setState(() => _isLiked = !_isLiked),
-                child: Icon(
-                  Icons.thumb_up,
-                  color: _isLiked ? Colors.white : const Color(0xFFAAAAAA),
-                  size: 20,
+              color: Colors.black,
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    _NavBtn(icon: Icons.grid_view_rounded, onTap: () => Navigator.pop(context)),
+                    _NavBtn(icon: Icons.equalizer_rounded, onTap: () {}),
+                    _NavBtn(icon: Icons.search_rounded, onTap: () {}),
+                    _NavBtn(icon: Icons.menu_rounded, onTap: () {}),
+                  ],
                 ),
-              ),
-            ),
-            // Botón dislike
-            Positioned(
-              left: 60,
-              bottom: 12,
-              child: _RoundButton(
-                onTap: () => setState(() => _isDisliked = !_isDisliked),
-                child: Icon(
-                  Icons.thumb_down,
-                  color: _isDisliked ? Colors.white : const Color(0xFFAAAAAA),
-                  size: 20,
-                ),
-              ),
-            ),
-            // Botón 3 puntos
-            Positioned(
-              right: 12,
-              bottom: 12,
-              child: _RoundButton(
-                onTap: () => _showOptionsMenu(context),
-                child: const Icon(Icons.more_vert,
-                    color: Color(0xFFAAAAAA), size: 20),
               ),
             ),
           ],
@@ -136,264 +206,60 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildSongInfo() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'I Love You So',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'The Walters - I Love You So',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecondaryControls() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          // Visualizador de barras (pequeño)
-          _RoundButton(
-            onTap: () {},
-            child: const Icon(Icons.equalizer,
-                color: Color(0xFFAAAAAA), size: 20),
-          ),
-          const SizedBox(width: 8),
-          // Temporizador
-          _RoundButton(
-            onTap: () {},
-            child: const Icon(Icons.timer, color: Color(0xFFAAAAAA), size: 20),
-          ),
-          const Spacer(),
-          // Repeat
-          _RoundButton(
-            onTap: () => setState(() => _isRepeat = !_isRepeat),
-            child: Icon(
-              Icons.repeat,
-              color: _isRepeat ? Colors.white : const Color(0xFFAAAAAA),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Shuffle
-          _RoundButton(
-            onTap: () => setState(() => _isShuffle = !_isShuffle),
-            child: Icon(
-              Icons.shuffle,
-              color: _isShuffle ? Colors.white : const Color(0xFFAAAAAA),
-              size: 20,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainControls() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Retroceso rápido (doble)
-          _BigButton(
-            size: 50,
-            onTap: () {},
-            child: const Icon(Icons.fast_rewind,
-                color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 8),
-          // Retroceso
-          _BigButton(
-            size: 56,
-            onTap: () {},
-            child: const Icon(Icons.skip_previous,
-                color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 8),
-          // Play/Pause (más grande)
-          _BigButton(
-            size: 70,
-            onTap: () => setState(() => _isPlaying = !_isPlaying),
-            child: Icon(
-              _isPlaying ? Icons.pause : Icons.play_arrow,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Adelante
-          _BigButton(
-            size: 56,
-            onTap: () {},
-            child: const Icon(Icons.skip_next,
-                color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 8),
-          // Adelanto rápido (doble)
-          _BigButton(
-            size: 50,
-            onTap: () {},
-            child: const Icon(Icons.fast_forward,
-                color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          // Visualizador de barras animado
-          _buildBarVisualizer(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBarVisualizer() {
-    return AnimatedBuilder(
-      animation: _waveController,
-      builder: (context, _) {
-        return SizedBox(
-          width: 60,
-          height: 70,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: List.generate(8, (i) {
-              final base = _barHeights[i % _barHeights.length];
-              final animated = _isPlaying
-                  ? base *
-                      (0.4 +
-                          0.6 *
-                              math
-                                  .sin(_waveController.value * math.pi +
-                                      i * 0.5)
-                                  .abs())
-                  : base * 0.3;
-              return Container(
-                width: 5,
-                height: 70 * animated,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF888888),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              );
-            }),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTimeRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
-        children: [
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 2,
-              thumbShape:
-                  const RoundSliderThumbShape(enabledThumbRadius: 0),
-              overlayShape:
-                  const RoundSliderOverlayShape(overlayRadius: 0),
-              activeTrackColor: Colors.white,
-              inactiveTrackColor: const Color(0xFF444444),
-            ),
-            child: Slider(
-              value: _progress,
-              onChanged: (v) => setState(() => _progress = v),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF222222),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  '0:02',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF222222),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  '2:40',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showOptionsMenu(BuildContext context) {
+  void _showSongMenu(BuildContext context, PlayerProvider p) {
+    final song = p.currentSong;
+    if (song == null) return;
     showDialog(
       context: context,
+      barrierColor: Colors.black54,
       builder: (_) => Dialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'I Love You So',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _OptionItem(icon: Icons.star_outline, label: 'Calificar'),
-              _OptionItem(
-                  icon: Icons.playlist_add, label: 'Añadir a lista'),
-              _OptionItem(icon: Icons.queue_music, label: 'Añadir a cola'),
-              _OptionItem(icon: Icons.info_outline, label: 'Info/Etiquetas'),
-              _OptionItem(icon: Icons.image_outlined, label: 'Carátula'),
-              _OptionItem(icon: Icons.share_outlined, label: 'Compartir'),
+              Text(song.title, style: const TextStyle(color: Colors.white,
+                  fontSize: 15, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center),
+              Text(song.artist, style: const TextStyle(
+                  color: Color(0xFF888888), fontSize: 12)),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.music_note_rounded, color: Color(0xFF666666), size: 12),
+                const SizedBox(width: 4),
+                Text('${song.duration} | ${song.format}',
+                    style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
+              ]),
+              const SizedBox(height: 4),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                _RoundBtn(icon: Icons.thumb_up_outlined, onTap: () {}),
+                const SizedBox(width: 8),
+                _RoundBtn(icon: Icons.thumb_down_outlined, onTap: () {}),
+              ]),
+              const Divider(color: Color(0xFF3A3A3A)),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.delete_outline_rounded, label: 'Eliminar', onTap: () => Navigator.pop(context)),
+              ]),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.add_rounded, label: 'Lista de reprod', onTap: () => Navigator.pop(context)),
+                _MenuBtn(icon: Icons.bookmark_border_rounded, label: 'Favorito', onTap: () => Navigator.pop(context)),
+              ]),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.image_outlined, label: 'Carátula', onTap: () => Navigator.pop(context)),
+              ]),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.info_outline_rounded, label: 'Info./Etiq.', onTap: () => Navigator.pop(context)),
+                _MenuBtn(icon: Icons.lyrics_outlined, label: 'Letra', onTap: () => Navigator.pop(context)),
+              ]),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.mic_rounded, label: 'Artista', onTap: () => Navigator.pop(context)),
+                _MenuBtn(icon: Icons.album_rounded, label: 'Álbum', onTap: () => Navigator.pop(context)),
+              ]),
+              _MenuRow(children: [
+                _MenuBtn(icon: Icons.folder_outlined, label: 'Carpeta', onTap: () => Navigator.pop(context)),
+                _MenuBtn(icon: Icons.library_music_rounded, label: 'Género', onTap: () => Navigator.pop(context)),
+              ]),
             ],
           ),
         ),
@@ -402,78 +268,132 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 }
 
-// ─── Botón redondo pequeño ───────────────────────────────────────────────────
-
-class _RoundButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _RoundButton({required this.onTap, required this.child});
-
+class _MenuRow extends StatelessWidget {
+  final List<Widget> children;
+  const _MenuRow({required this.children});
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 36,
-        decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(children: children.map((c) => Expanded(child: c)).toList()),
+  );
 }
 
-// ─── Botón circular grande (controles) ──────────────────────────────────────
-
-class _BigButton extends StatelessWidget {
-  final double size;
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _BigButton(
-      {required this.size, required this.onTap, required this.child});
-
+class _MenuBtn extends StatelessWidget {
+  final IconData icon; final String label; final VoidCallback onTap;
+  const _MenuBtn({required this.icon, required this.label, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1A1A),
-          shape: BoxShape.circle,
-        ),
-        child: Center(child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: [
+        Icon(icon, color: Colors.white, size: 20),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      ]),
+    ),
+  );
 }
 
-// ─── Opción del menú ─────────────────────────────────────────────────────────
+class _RoundBtn extends StatelessWidget {
+  final IconData icon; final VoidCallback onTap; final bool active;
+  const _RoundBtn({required this.icon, required this.onTap, this.active = false});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 40, height: 40,
+      decoration: BoxDecoration(
+        color: active ? const Color(0xFF3A3A3A) : const Color(0xFF1C1C1C),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF2A2A2A))),
+      child: Icon(icon, color: active ? Colors.white : const Color(0xFF888888), size: 20)),
+  );
+}
 
-class _OptionItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _TransportBtn extends StatelessWidget {
+  final IconData icon; final double size; final VoidCallback onTap;
+  const _TransportBtn({required this.icon, required this.size, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: size + 16, height: size + 16,
+      decoration: const BoxDecoration(color: Color(0xFF1C1C1C), shape: BoxShape.circle),
+      child: Icon(icon, color: Colors.white, size: size)),
+  );
+}
 
-  const _OptionItem({required this.icon, required this.label});
+class _TimeChip extends StatelessWidget {
+  final String text;
+  const _TimeChip(this.text);
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(12)),
+    child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12)),
+  );
+}
+
+class _NavBtn extends StatelessWidget {
+  final IconData icon; final VoidCallback onTap;
+  const _NavBtn({required this.icon, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Icon(icon, color: const Color(0xFF555555), size: 28)),
+    ),
+  );
+}
+
+// ── Painters ─────────────────────────────────────────────────────────────────
+class _WaveformPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFF1A1A1A)..style = PaintingStyle.fill;
+    final path = Path();
+    path.moveTo(0, size.height);
+    final points = [0.0, 0.6, 0.3, 0.8, 0.15, 0.7, 0.4, 0.5, 0.25, 0.9, 0.5, 0.4, 0.35, 0.75, 0.6, 0.3, 0.45, 0.65, 0.75, 0.2, 0.55, 0.5, 0.85, 0.1, 0.7, 0.45, 1.0, 0.8];
+    for (int i = 0; i < points.length; i += 2) {
+      path.lineTo(points[i] * size.width, points[i + 1] * size.height);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+  @override
+  bool shouldRepaint(_) => false;
+}
+
+class _SeekWaveformPainter extends CustomPainter {
+  final double progress;
+  const _SeekWaveformPainter({required this.progress});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFFAAAAAA), size: 22),
-          const SizedBox(width: 14),
-          Text(label,
-              style: const TextStyle(color: Colors.white, fontSize: 15)),
-        ],
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final rng = math.Random(42);
+    final barW = 3.0;
+    final gap = 2.0;
+    final count = (size.width / (barW + gap)).floor();
+    final playedPaint = Paint()..color = const Color(0xFF888888);
+    final unplayedPaint = Paint()..color = const Color(0xFF333333);
+
+    for (int i = 0; i < count; i++) {
+      final x = i * (barW + gap);
+      final h = 20 + rng.nextDouble() * (size.height - 40);
+      final y = (size.height - h) / 2;
+      final played = (i / count) <= progress;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(x, y, barW, h), const Radius.circular(1.5)),
+        played ? playedPaint : unplayedPaint,
+      );
+    }
   }
+  @override
+  bool shouldRepaint(_SeekWaveformPainter old) => old.progress != progress;
 }

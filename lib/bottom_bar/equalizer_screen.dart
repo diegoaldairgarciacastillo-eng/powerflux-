@@ -1,158 +1,169 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/eq_provider.dart';
 
 class EqualizerScreen extends StatefulWidget {
   const EqualizerScreen({super.key});
-
   @override
   State<EqualizerScreen> createState() => _EqualizerScreenState();
 }
 
-class _EqualizerScreenState extends State<EqualizerScreen> {
-  int _activeTab = 0; // 0=Ecu, 1=Tono, 2=Límite
+class _EqualizerScreenState extends State<EqualizerScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabs;
 
-  // EQ bands: Preamp, 31, 62, 125, 250, 500, 1K, 2K, 4K, 8K
-  final List<String> _bandLabels = [
-    'Preamp', '31', '62', '125', '250', '500', '1K', '2K', '4K', '8K'
-  ];
-  final List<double> _bandValues = List.filled(10, 0.0);
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 3, vsync: this);
+  }
 
-  // Tono knobs
-  double _bassValue = 0.31;
-  double _trebleValue = 0.0;
-  double _balanceValue = 0.5;
-  double _stereoValue = 0.0;
-  double _volumeValue = 0.44;
-  double _tempoValue = 0.5;
-
-  // Reverb knobs
-  final List<double> _reverbValues = List.filled(7, 0.0);
-  final List<String> _reverbLabels = [
-    'Amortiguación', 'Filtro', 'Fundido',
-    'Preretardo', 'Mezcla preretardo', 'Tamaño', 'Mezclado'
-  ];
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final eq = context.watch<EqProvider>();
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
           children: [
-            // Tab selector superior
-            _buildTabBar(),
-            // Contenido según tab
-            Expanded(child: _buildTabContent()),
+            // Tab bar
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1C),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: TabBar(
+                controller: _tabs,
+                indicator: BoxDecoration(
+                  color: const Color(0xFF3A3A3A),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                labelColor: Colors.white,
+                unselectedLabelColor: const Color(0xFF666666),
+                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Icon(Icons.tune_rounded, size: 18), SizedBox(width: 4), Text('EQ')])),
+                  Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Icon(Icons.radio_button_checked_rounded, size: 18), SizedBox(width: 4), Text('Tono')])),
+                  Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                    children: [Icon(Icons.spatial_audio_rounded, size: 18), SizedBox(width: 4), Text('Reverb')])),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: [
+                  _EqTab(eq: eq),
+                  _ToneTab(eq: eq),
+                  _ReverbTab(eq: eq),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        children: [
-          _TabBtn(label: '≡ᵢ', index: 0, active: _activeTab, onTap: _setTab),
-          _TabBtn(label: '◑', index: 1, active: _activeTab, onTap: _setTab),
-          _TabBtn(label: '(●)', index: 2, active: _activeTab, onTap: _setTab),
-        ],
-      ),
-    );
-  }
+// ── EQ Tab ───────────────────────────────────────────────────────────────────
+class _EqTab extends StatelessWidget {
+  final EqProvider eq;
+  const _EqTab({required this.eq});
 
-  void _setTab(int i) => setState(() => _activeTab = i);
-
-  Widget _buildTabContent() {
-    switch (_activeTab) {
-      case 0:
-        return _buildEcuContent();
-      case 1:
-        return _buildTonoContent();
-      case 2:
-        return _buildReverbContent();
-      default:
-        return _buildEcuContent();
-    }
-  }
-
-  // ── TAB ECU ──────────────────────────────────────────────────────────────
-
-  Widget _buildEcuContent() {
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        // Sliders EQ
+        // Sliders
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
             child: Row(
-              children: List.generate(10, (i) => _buildEqSlider(i)),
+              children: List.generate(EqProvider.bandLabels.length, (i) {
+                return Expanded(
+                  child: _EqSlider(
+                    label: EqProvider.bandLabels[i],
+                    value: eq.bands[i],
+                    onChanged: (v) => eq.setBand(i, v),
+                  ),
+                );
+              }),
             ),
           ),
         ),
-        // Curva EQ visualizer
+        // Frequency curve preview
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           height: 48,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
+            color: const Color(0xFF1C1C1C),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: CustomPaint(painter: _EqCurvePainter(_bandValues)),
+          child: CustomPaint(
+            painter: _EqCurvePainter(bands: eq.bands),
+            size: const Size(double.infinity, 48),
+          ),
         ),
-        // Info
-        const Text(
-          'DVC EQ 10 TON LMT',
-          style: TextStyle(color: Color(0xFF888888), fontSize: 12),
+        // Preset label
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(eq.preset,
+              style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
         ),
-        const SizedBox(height: 8),
-        // Botones Ecu / Preajuste / ⋮
+        // Buttons
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Row(
             children: [
-              _ActiveChip(label: 'Ecu', active: true),
+              _EqChip(label: 'Ecu', onTap: () {}),
               const SizedBox(width: 8),
-              _ActiveChip(label: 'Preajuste', active: false, bold: true),
-              const Spacer(),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF444444)),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _showPresets(context, eq),
+                  child: Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C1C1C),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFF3A3A3A)),
+                    ),
+                    child: const Center(child: Text('Preajuste',
+                        style: TextStyle(color: Colors.white, fontSize: 13))),
+                  ),
                 ),
-                child: const Icon(Icons.more_vert,
-                    color: Color(0xFFAAAAAA), size: 18),
               ),
+              const SizedBox(width: 8),
+              _EqChip(label: 'Reset', onTap: eq.reset),
             ],
           ),
         ),
-        // Graves y Agudos knobs
+        // Tone + Treble knobs
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              _KnobWidget(
-                label: 'Graves',
-                value: _bassValue,
-                displayValue: '${(_bassValue * 100).round()}%',
-                accentColor: const Color(0xFF00FF88),
-                onChanged: (v) => setState(() => _bassValue = v),
-              ),
-              const SizedBox(width: 24),
-              _KnobWidget(
-                label: 'Agud...',
-                value: _trebleValue,
-                displayValue: '${(_trebleValue * 100).round()}%',
-                onChanged: (v) => setState(() => _trebleValue = v),
-              ),
+              Expanded(child: _KnobControl(
+                label: 'Graves', value: eq.tone,
+                onChanged: (v) => eq.setVolume(v),
+                color: Colors.cyanAccent)),
+              const SizedBox(width: 16),
+              Expanded(child: _KnobControl(
+                label: 'Agud...', value: eq.treble,
+                onChanged: (v) {},
+                color: const Color(0xFF555555))),
             ],
           ),
         ),
@@ -160,391 +171,78 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
     );
   }
 
-  Widget _buildEqSlider(int index) {
-    return Expanded(
-      child: Column(
+  void _showPresets(BuildContext context, EqProvider eq) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1C),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: -1,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  thumbShape: const _EqThumbShape(),
-                  activeTrackColor: const Color(0xFF00FF66),
-                  inactiveTrackColor: const Color(0xFF333333),
-                  overlayColor: Colors.transparent,
-                ),
-                child: Slider(
-                  value: (_bandValues[index] + 12) / 24,
-                  onChanged: (v) => setState(
-                      () => _bandValues[index] = v * 24 - 12),
-                ),
-              ),
-            ),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Preajustes',
+                style: TextStyle(color: Colors.white, fontSize: 16,
+                    fontWeight: FontWeight.w700)),
           ),
-          Text(
-            _bandLabels[index],
-            style: const TextStyle(
-                color: Color(0xFF888888), fontSize: 9),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _bandValues[index].toStringAsFixed(1),
-            style: const TextStyle(
-                color: Color(0xFF666666), fontSize: 9),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── TAB TONO ─────────────────────────────────────────────────────────────
-
-  Widget _buildTonoContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _KnobWidget(
-                label: 'Balance',
-                value: _balanceValue,
-                displayValue: '0.00',
-                size: 110,
-                onChanged: (v) => setState(() => _balanceValue = v),
-              ),
-              _KnobWidget(
-                label: 'Expans. Estéreo',
-                value: _stereoValue,
-                displayValue: '${(_stereoValue * 100).round()}%',
-                size: 110,
-                onChanged: (v) => setState(() => _stereoValue = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _ActiveChip(label: 'Tempo', active: false),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _KnobWidget(
-                label: '',
-                value: _tempoValue,
-                displayValue: '1.00x',
-                size: 110,
-                onChanged: (v) => setState(() => _tempoValue = v),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                children: [
-                  _SmallButton(label: '+', onTap: () {}),
-                  const SizedBox(height: 8),
-                  _SmallButton(label: '−', onTap: () {}),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _ActiveChip(label: 'Mono', active: false),
-              _ActiveChip(label: 'Restablecer', active: false, bold: true),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _KnobWidget(
-            label: 'Volumen',
-            value: _volumeValue,
-            displayValue: '${(_volumeValue * 100).round()}%',
-            size: 130,
-            accentColor: const Color(0xFF00FF88),
-            onChanged: (v) => setState(() => _volumeValue = v),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── TAB REVERB ───────────────────────────────────────────────────────────
-
-  Widget _buildReverbContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Primera fila: 3 knobs
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [0, 1, 2].map((i) => _KnobWidget(
-              label: _reverbLabels[i],
-              value: _reverbValues[i],
-              displayValue: _reverbValues[i].toStringAsFixed(2),
-              size: 90,
-              onChanged: (v) => setState(() => _reverbValues[i] = v),
-            )).toList(),
-          ),
-          const SizedBox(height: 20),
-          // Segunda fila: 3 knobs
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [3, 4, 5].map((i) => _KnobWidget(
-              label: _reverbLabels[i],
-              value: _reverbValues[i],
-              displayValue: _reverbValues[i].toStringAsFixed(2),
-              size: 90,
-              onChanged: (v) => setState(() => _reverbValues[i] = v),
-            )).toList(),
-          ),
-          const SizedBox(height: 16),
-          // Botones
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _ActiveChip(label: 'Reverb', active: true),
-              _ActiveChip(label: 'Preajuste', active: false, bold: true),
-              _ActiveChip(label: 'Guardar', active: false, bold: true),
-              _ActiveChip(label: 'Restable...', active: false, bold: true),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Último knob centrado
-          _KnobWidget(
-            label: _reverbLabels[6],
-            value: _reverbValues[6],
-            displayValue: _reverbValues[6].toStringAsFixed(2),
-            size: 110,
-            onChanged: (v) => setState(() => _reverbValues[6] = v),
-          ),
+          ...EqProvider.presets.keys.map((p) => ListTile(
+            title: Text(p, style: const TextStyle(color: Colors.white)),
+            trailing: eq.preset == p
+                ? const Icon(Icons.check_rounded, color: Colors.white)
+                : null,
+            onTap: () { eq.applyPreset(p); Navigator.pop(context); },
+          )),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
 
-// ─── Componentes ────────────────────────────────────────────────────────────
-
-class _TabBtn extends StatelessWidget {
-  final String label;
-  final int index;
-  final int active;
-  final ValueChanged<int> onTap;
-
-  const _TabBtn(
-      {required this.label,
-      required this.index,
-      required this.active,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = index == active;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTap(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF3A3A3A) : Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isActive ? Colors.white : const Color(0xFF666666),
-                fontSize: 18,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActiveChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final bool bold;
-
-  const _ActiveChip(
-      {required this.label, required this.active, this.bold = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF333333) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: active ? const Color(0xFF555555) : const Color(0xFF333333),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFFAAAAAA),
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SmallButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _SmallButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: const Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: Text(label,
-              style:
-                  const TextStyle(color: Colors.white, fontSize: 18)),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Knob circular ──────────────────────────────────────────────────────────
-
-class _KnobWidget extends StatefulWidget {
+class _EqSlider extends StatelessWidget {
   final String label;
   final double value;
-  final String displayValue;
-  final double size;
-  final Color accentColor;
   final ValueChanged<double> onChanged;
-
-  const _KnobWidget({
-    required this.label,
-    required this.value,
-    required this.displayValue,
-    required this.onChanged,
-    this.size = 80,
-    this.accentColor = const Color(0xFF444444),
-  });
-
-  @override
-  State<_KnobWidget> createState() => _KnobWidgetState();
-}
-
-class _KnobWidgetState extends State<_KnobWidget> {
-  double _startY = 0;
-  double _startValue = 0;
+  const _EqSlider({required this.label, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onVerticalDragStart: (d) {
-            _startY = d.globalPosition.dy;
-            _startValue = widget.value;
-          },
-          onVerticalDragUpdate: (d) {
-            final delta = (_startY - d.globalPosition.dy) / 150;
-            final newVal = (_startValue + delta).clamp(0.0, 1.0);
-            widget.onChanged(newVal);
-          },
-          child: CustomPaint(
-            painter: _KnobPainter(widget.value, widget.accentColor),
-            size: Size(widget.size, widget.size),
+        Text('${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}',
+            style: const TextStyle(color: Color(0xFF888888), fontSize: 9)),
+        Expanded(
+          child: RotatedBox(
+            quarterTurns: 3,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 2,
+                thumbShape: _EqThumbShape(),
+                activeTrackColor: const Color(0xFF39FF14),
+                inactiveTrackColor: const Color(0xFF333333),
+                overlayShape: SliderComponentShape.noOverlay,
+              ),
+              child: Slider(
+                value: value, min: -12, max: 12,
+                onChanged: onChanged,
+              ),
+            ),
           ),
         ),
-        if (widget.label.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Text(widget.label,
-              style: const TextStyle(
-                  color: Color(0xFFAAAAAA), fontSize: 11)),
-        ],
-        Text(widget.displayValue,
-            style: const TextStyle(
-                color: Color(0xFF888888), fontSize: 11)),
+        Text(label,
+            style: const TextStyle(color: Color(0xFF888888), fontSize: 9,
+                fontWeight: FontWeight.w600)),
+        Text('${value.toStringAsFixed(1)}',
+            style: const TextStyle(color: Color(0xFF555555), fontSize: 8)),
       ],
     );
   }
 }
 
-class _KnobPainter extends CustomPainter {
-  final double value;
-  final Color accentColor;
-
-  _KnobPainter(this.value, this.accentColor);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    // Fondo del knob
-    canvas.drawCircle(
-        center,
-        radius,
-        Paint()..color = const Color(0xFF2A2A2A));
-
-    // Arco de progreso
-    final startAngle = math.pi * 0.75;
-    final sweepAngle = math.pi * 1.5 * value;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius - 4),
-      startAngle,
-      sweepAngle,
-      false,
-      Paint()
-        ..color = accentColor
-        ..strokeWidth = 4
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Marcador (línea blanca)
-    final angle = startAngle + sweepAngle;
-    final markerX = center.dx + (radius - 12) * math.cos(angle);
-    final markerY = center.dy + (radius - 12) * math.sin(angle);
-    canvas.drawCircle(
-        Offset(markerX, markerY), 3, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(_KnobPainter old) => old.value != value;
-}
-
 class _EqThumbShape extends SliderComponentShape {
-  const _EqThumbShape();
-
   @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
-      const Size(28, 28);
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(24, 24);
 
   @override
   void paint(PaintingContext context, Offset center,
@@ -561,44 +259,216 @@ class _EqThumbShape extends SliderComponentShape {
     final canvas = context.canvas;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: center, width: 28, height: 20),
-        const Radius.circular(6),
-      ),
-      Paint()..color = const Color(0xFF555555),
+          Rect.fromCenter(center: center, width: 28, height: 16),
+          const Radius.circular(8)),
+      Paint()..color = const Color(0xFF3A3A3A),
     );
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: 12, height: 2),
-      Paint()..color = const Color(0xFFAAAAAA),
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center, width: 14, height: 3),
+          const Radius.circular(2)),
+      Paint()..color = const Color(0xFF888888),
     );
   }
 }
 
 class _EqCurvePainter extends CustomPainter {
-  final List<double> values;
-
-  _EqCurvePainter(this.values);
+  final List<double> bands;
+  const _EqCurvePainter({required this.bands});
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (bands.isEmpty) return;
     final paint = Paint()
-      ..color = const Color(0xFF00FF66)
-      ..strokeWidth = 2
+      ..color = const Color(0xFF39FF14)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
-
     final path = Path();
-    final step = size.width / (values.length - 1);
-    for (int i = 0; i < values.length; i++) {
-      final x = i * step;
-      final y = size.height / 2 - (values[i] / 12) * (size.height / 2 - 4);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+    final mid = size.height / 2;
+    for (int i = 0; i < bands.length; i++) {
+      final x = i / (bands.length - 1) * size.width;
+      final y = mid - (bands[i] / 12) * (mid - 4);
+      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
     }
     canvas.drawPath(path, paint);
+    // Zero line
+    canvas.drawLine(Offset(0, mid), Offset(size.width, mid),
+        Paint()..color = const Color(0xFF333333)..strokeWidth = 0.5);
   }
 
   @override
-  bool shouldRepaint(_EqCurvePainter old) => true;
+  bool shouldRepaint(_EqCurvePainter old) => old.bands != bands;
+}
+
+// ── Tone Tab ─────────────────────────────────────────────────────────────────
+class _ToneTab extends StatelessWidget {
+  final EqProvider eq;
+  const _ToneTab({required this.eq});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(children: [
+            Expanded(child: _KnobControl(label: 'Balance', value: (eq.balance + 1) / 2,
+                onChanged: (v) => eq.setBalance(v * 2 - 1), color: const Color(0xFF888888))),
+            const SizedBox(width: 24),
+            Expanded(child: _KnobControl(label: 'Expans. Estéreo', value: eq.stereoExpansion,
+                onChanged: eq.setStereoExpansion, color: const Color(0xFF888888))),
+          ]),
+          const SizedBox(height: 24),
+          _EqChip(label: 'Tempo', onTap: () {}),
+          const SizedBox(height: 16),
+          _KnobControl(label: '${eq.tempo.toStringAsFixed(2)}x', value: (eq.tempo - 0.5) / 1.5,
+              onChanged: (v) => eq.setTempo(0.5 + v * 1.5), color: const Color(0xFF888888)),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            _EqChip(label: eq.mono ? 'Mono ✓' : 'Mono', onTap: eq.toggleMono),
+            _EqChip(label: 'Restablecer', onTap: eq.reset),
+          ]),
+          const SizedBox(height: 24),
+          _KnobControl(label: 'Volumen\n${(eq.volume * 100).round()}%',
+              value: eq.volume, onChanged: eq.setVolume, color: const Color(0xFF39FF14), size: 120),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reverb Tab ────────────────────────────────────────────────────────────────
+class _ReverbTab extends StatelessWidget {
+  final EqProvider eq;
+  const _ReverbTab({required this.eq});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(children: [
+            Expanded(child: _KnobControl(label: 'Amortiguación\n${eq.damping.toStringAsFixed(2)}',
+                value: eq.damping, onChanged: eq.setDamping, color: const Color(0xFF888888))),
+            const SizedBox(width: 16),
+            Expanded(child: _KnobControl(label: 'Filtro\n${eq.filter.toStringAsFixed(2)}',
+                value: eq.filter, onChanged: eq.setFilter, color: const Color(0xFF888888))),
+            const SizedBox(width: 16),
+            Expanded(child: _KnobControl(label: 'Fundido\n${eq.fade.toStringAsFixed(2)}',
+                value: eq.fade, onChanged: eq.setFade, color: const Color(0xFF888888))),
+          ]),
+          const SizedBox(height: 24),
+          Row(children: [
+            Expanded(child: _KnobControl(label: 'Preretardo\n${eq.preDelay.toStringAsFixed(2)}',
+                value: eq.preDelay, onChanged: eq.setPreDelay, color: const Color(0xFF888888))),
+            const SizedBox(width: 16),
+            Expanded(child: _KnobControl(label: 'Mezcla preretardo\n${eq.reverbMix.toStringAsFixed(2)}',
+                value: eq.reverbMix, onChanged: eq.setReverbMix, color: const Color(0xFF888888))),
+            const SizedBox(width: 16),
+            Expanded(child: _KnobControl(label: 'Tamaño\n${eq.reverbSize.toStringAsFixed(2)}',
+                value: eq.reverbSize, onChanged: eq.setReverbSize, color: const Color(0xFF888888))),
+          ]),
+          const SizedBox(height: 16),
+          Row(children: [
+            _EqChip(label: 'Reverb', onTap: () {}),
+            const SizedBox(width: 8),
+            _EqChip(label: 'Preajuste', onTap: () {}),
+            const SizedBox(width: 8),
+            _EqChip(label: 'Guardar', onTap: () {}),
+            const SizedBox(width: 8),
+            _EqChip(label: 'Restable...', onTap: eq.reset),
+          ]),
+          const SizedBox(height: 24),
+          _KnobControl(label: 'Mezclado\n${eq.mixed.toStringAsFixed(2)}',
+              value: eq.mixed, onChanged: eq.setMixed,
+              color: const Color(0xFF888888), size: 120),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Shared widgets ────────────────────────────────────────────────────────────
+class _KnobControl extends StatelessWidget {
+  final String label;
+  final double value;
+  final ValueChanged<double> onChanged;
+  final Color color;
+  final double size;
+  const _KnobControl({required this.label, required this.value,
+      required this.onChanged, required this.color, this.size = 80});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onVerticalDragUpdate: (d) {
+            onChanged((value - d.delta.dy / 100).clamp(0.0, 1.0));
+          },
+          child: CustomPaint(
+            painter: _KnobPainter(value: value, color: color),
+            size: Size(size, size),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(label, textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
+      ],
+    );
+  }
+}
+
+class _KnobPainter extends CustomPainter {
+  final double value;
+  final Color color;
+  const _KnobPainter({required this.value, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2, cy = size.height / 2;
+    final r = math.min(cx, cy) - 4;
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = const Color(0xFF2A2A2A));
+    final trackPaint = Paint()
+      ..color = const Color(0xFF3A3A3A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r - 4),
+        math.pi * 0.75, math.pi * 1.5, false, trackPaint);
+    if (value > 0) {
+      final valPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r - 4),
+          math.pi * 0.75, math.pi * 1.5 * value, false, valPaint);
+    }
+    final angle = math.pi * 0.75 + math.pi * 1.5 * value;
+    final dx = cx + (r - 10) * math.cos(angle);
+    final dy = cy + (r - 10) * math.sin(angle);
+    canvas.drawLine(Offset(cx, cy), Offset(dx, dy),
+        Paint()..color = const Color(0xFF888888)..strokeWidth = 2..strokeCap = StrokeCap.round);
+  }
+
+  @override
+  bool shouldRepaint(_KnobPainter old) => old.value != value;
+}
+
+class _EqChip extends StatelessWidget {
+  final String label; final VoidCallback onTap;
+  const _EqChip({required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF3A3A3A))),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12))),
+  );
 }

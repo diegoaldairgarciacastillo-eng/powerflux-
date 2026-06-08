@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 
 class SongListItem extends StatelessWidget {
-  final String title;
-  final String artist;
-  final String duration;
-  final String format;
-  final bool isPlaying;
-  final bool isSelected;
-  final bool selectionMode;
-  final VoidCallback? onTap;
+  final String title, artist, duration, format;
+  final bool isSelected, selectionMode, isPlaying;
+  final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
   const SongListItem({
@@ -17,10 +12,10 @@ class SongListItem extends StatelessWidget {
     required this.artist,
     required this.duration,
     required this.format,
-    this.isPlaying = false,
     this.isSelected = false,
     this.selectionMode = false,
-    this.onTap,
+    this.isPlaying = false,
+    required this.onTap,
     this.onLongPress,
   });
 
@@ -32,50 +27,45 @@ class SongListItem extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: isPlaying
-              ? const Color(0xFF2A2A2A)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          color: isSelected ? const Color(0xFF1C1C1C) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: Row(
             children: [
-              // Portada / checkbox
+              // Artwork / checkbox
               Stack(
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: const Color(0xFF2A2A2A),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      width: 56, height: 56,
+                      color: const Color(0xFF1A1A1A),
+                      child: isPlaying
+                          ? const Icon(Icons.equalizer_rounded,
+                              color: Color(0xFF39FF14), size: 28)
+                          : const Icon(Icons.music_note_rounded,
+                              color: Color(0xFF333333), size: 28),
                     ),
-                    child: const Icon(Icons.music_note,
-                        color: Color(0xFF555555), size: 24),
                   ),
                   if (selectionMode)
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Center(
                           child: Container(
-                            width: 22,
-                            height: 22,
+                            width: 22, height: 22,
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              border: Border.all(
-                                  color: Colors.white, width: 2),
                               borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                              color: isSelected ? Colors.white : Colors.transparent,
                             ),
                             child: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Colors.black, size: 14)
+                                ? const Icon(Icons.check_rounded, color: Colors.black, size: 16)
                                 : null,
                           ),
                         ),
@@ -84,46 +74,26 @@ class SongListItem extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
+                    Text(title,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: isPlaying
-                            ? Colors.white
-                            : const Color(0xFFEEEEEE),
-                        fontSize: 14,
-                        fontWeight: isPlaying
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                        color: isPlaying ? const Color(0xFF39FF14) : Colors.white,
+                        fontSize: 14, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 3),
-                    Text(
-                      artist,
-                      style: const TextStyle(
-                          color: Color(0xFF888888), fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(artist,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
                     const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        const Icon(Icons.music_note,
-                            color: Color(0xFF666666), size: 10),
-                        const SizedBox(width: 3),
-                        Text(
-                          '$duration | $format',
-                          style: const TextStyle(
-                              color: Color(0xFF666666), fontSize: 11),
-                        ),
-                      ],
-                    ),
+                    Row(children: [
+                      const Icon(Icons.music_note_rounded, color: Color(0xFF555555), size: 11),
+                      const SizedBox(width: 3),
+                      Text('$duration | $format',
+                          style: const TextStyle(color: Color(0xFF555555), fontSize: 11)),
+                    ]),
                   ],
                 ),
               ),
