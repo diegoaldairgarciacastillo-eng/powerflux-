@@ -46,5 +46,6 @@ Proyecto en desarrollo activo.
   <img src="screenshots/icon.jpg" width="180">
   <img src="screenshots/library.jpg" width="180">
   <img src="screenshots/search.jpg" width="180">
+  <img src="screenshots/player.jpg" width="180">
 </p>
 
